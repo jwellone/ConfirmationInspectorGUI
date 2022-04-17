@@ -7,7 +7,7 @@
 
 
 # ConfirmationInspectorGUI
-Can check the member variables and properties of the specified instance on the Inspector.
+Check the member variables and properties of the specified instance on the Inspector.
 
 This feature is one of the "j1Tech" developed by jwellone Inc for Unity.
 
