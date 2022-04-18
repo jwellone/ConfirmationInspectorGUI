@@ -1,6 +1,6 @@
-#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEditor;
 using UnityEngine;
 
@@ -46,24 +46,10 @@ namespace jwelloneEditor
 
 	public sealed class BaseValueGUI : GUI
 	{
-		static BaseValueGUI _instance;
+		public static readonly BaseValueGUI instance = new BaseValueGUI();
 
 		readonly EnumGUI _enumGUI = new EnumGUI();
 		readonly Dictionary<Type, GUI> _dicGUI = new Dictionary<Type, GUI>();
-
-
-		public static BaseValueGUI instance
-		{
-			get
-			{
-				if(_instance==null)
-				{
-					_instance = new BaseValueGUI();
-				}
-
-				return _instance;
-			}
-		}
 
 		public int order => 0;
 
@@ -87,16 +73,18 @@ namespace jwelloneEditor
 			_dicGUI.Add(typeof(Vector4), new Vector4GUI());
 			_dicGUI.Add(typeof(Color), new ColorGUI());
 			_dicGUI.Add(typeof(Color32), new Color32GUI());
+			_dicGUI.Add(typeof(Quaternion), new QuaternionGUI());
+			_dicGUI.Add(typeof(Matrix4x4), new Matrix4x4GUI());
 		}
 
 		public bool Show(in ConfirmationInspectorGUI owner, in GUIData data)
 		{
-			if(_enumGUI.Show(owner, data))
+			if (_enumGUI.Show(owner, data))
 			{
 				return true;
 			}
 
-			if(_dicGUI.TryGetValue(data.type,out var gui))
+			if (_dicGUI.TryGetValue(data.type, out var gui))
 			{
 				return gui.Show(owner, data);
 			}
@@ -104,7 +92,6 @@ namespace jwelloneEditor
 			return false;
 		}
 	}
-
 
 	public sealed class StringGUI : GUI
 	{
@@ -234,6 +221,62 @@ namespace jwelloneEditor
 		}
 	}
 
+	public sealed class QuaternionGUI : GUI
+	{
+		public int order => 0;
+
+		public bool Show(in ConfirmationInspectorGUI owner, in GUIData data)
+		{
+			if (data.type != typeof(Quaternion))
+			{
+				return false;
+			}
+
+			var q = (Quaternion)(data.value ?? Quaternion.identity);
+			var vec4 = new Vector4(q.x, q.y, q.z, q.w);
+			EditorGUILayout.Vector4Field(data.name, vec4);
+			return true;
+		}
+	}
+
+	public sealed class Matrix4x4GUI : GUI
+	{
+		public int order => 0;
+
+		public bool Show(in ConfirmationInspectorGUI owner, in GUIData data)
+		{
+			if (data.type != typeof(Matrix4x4))
+			{
+				return false;
+			}
+
+			var matrix = (Matrix4x4)(data.value ?? Matrix4x4.identity);
+			EditorGUILayout.LabelField(data.name);
+			var option = GUILayout.Width((EditorGUIUtility.currentViewWidth - 200) / 4f);
+			for (var i = 0; i < 4; ++i)
+			{
+				var index = i * 4;
+				var row = index % 4;
+				var column = index / 4;
+				EditorGUILayout.BeginHorizontal();
+				GUILayout.FlexibleSpace();
+				ValueField($"m{column}{row}", matrix[row, column], option);
+				ValueField($"m{column}{++row}", matrix[row, column], option);
+				ValueField($"m{column}{++row}", matrix[row, column], option);
+				ValueField($"m{column}{++row}", matrix[row, column], option);
+				EditorGUILayout.EndHorizontal();
+			}
+
+			return true;
+		}
+
+		void ValueField(string name, float value, GUILayoutOption option)
+		{
+			GUILayout.Label(name, GUILayout.Width(30));
+			GUILayout.TextField(value.ToString(CultureInfo.InvariantCulture), option);
+		}
+	}
+
 	public sealed class EnumGUI : GUI
 	{
 		public int order => 0;
@@ -268,7 +311,7 @@ namespace jwelloneEditor
 
 	public sealed class ArrayGUI : GUI
 	{
-		readonly FoldoutLayout _foldout = new FoldoutLayout();
+		readonly FoldoutLayout _foldout = new();
 		public int order => 0;
 
 		public bool Show(in ConfirmationInspectorGUI owner, in GUIData data)
@@ -291,7 +334,7 @@ namespace jwelloneEditor
 			{
 				var value = ((Array)data.value!).GetValue(i);
 
-				if(!BaseValueGUI.instance.Show(owner, new GUIData(value.GetType(), $"Element{i}", value)))
+				if (!BaseValueGUI.instance.Show(owner, new GUIData(value.GetType(), $"Element{i}", value)))
 				{
 					if (_foldout.Show($"Element{i}", $"{key}_{value.GetType()}_Element{i}"))
 					{
@@ -325,7 +368,7 @@ namespace jwelloneEditor
 			var key = $"{data.type}_{data.name}";
 			if (_foldout.Show(data.name, key))
 			{
-				var count = (int)data.type.GetProperty("Count")!.GetValue(data.value, null);
+				var count = data.value == null ? 0 : (int)data.type.GetProperty("Count")!.GetValue(data.value, null);
 				if (count > 0)
 				{
 					var property = data.type.GetProperty("Item");
@@ -372,11 +415,18 @@ namespace jwelloneEditor
 				return false;
 			}
 
-			if (_foldout.Show(data.name, $"{data.type}_{data.name}"))
+			if (data.value == null)
 			{
-				EditorGUI.indentLevel += 1;
-				owner.Show(data.value);
-				EditorGUI.indentLevel -= 1;
+				EditorGUILayout.TextField(data.name, "none");
+			}
+			else
+			{
+				if (_foldout.Show(data.name, $"{data.type}_{data.name}"))
+				{
+					EditorGUI.indentLevel += 1;
+					owner.Show(data.value);
+					EditorGUI.indentLevel -= 1;
+				}
 			}
 
 			return true;
@@ -398,5 +448,22 @@ namespace jwelloneEditor
 			return _dicFlags[key];
 		}
 	}
+
+	public static class TypeExtension
+	{
+		public static bool IsClassOrStruct(this Type self)
+		{
+			return self.IsClass || (self.IsValueType && !self.IsPrimitive && !self.IsEnum);
+		}
+
+		public static bool IsList(this Type self)
+		{
+			return self.IsGenericType && self.GetGenericTypeDefinition() == typeof(List<>);
+		}
+
+		public static bool IsDictionary(this Type self)
+		{
+			return self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Dictionary<,>);
+		}
+	}
 }
-#endif

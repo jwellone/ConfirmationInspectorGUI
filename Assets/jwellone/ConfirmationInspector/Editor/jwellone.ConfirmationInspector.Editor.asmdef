@@ -1,8 +1,10 @@
 {
-    "name": "jwellone.ConfirmationInspectorGUI.Sample",
+    "name": "jwellone.ConfirmationInspector.Editor",
     "rootNamespace": "",
     "references": [],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

@@ -1,7 +1,7 @@
-#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 #nullable enable
 
@@ -76,7 +76,7 @@ namespace jwelloneEditor
 
 			foreach (var field in obj.GetType().GetFields(BIND_FLAGS))
 			{
-				if (field.IsBackingField())
+				if (IsBackingField(field) || field.FieldType.IsDictionary())
 				{
 					continue;
 				}
@@ -89,6 +89,11 @@ namespace jwelloneEditor
 			{
 				try
 				{
+					if (property.PropertyType.IsDictionary())
+					{
+						continue;
+					}
+					
 					var name = $"{property.Name}({property.PropertyType.Name})";
 					data.Add(new Data(property.PropertyType, name, property.GetValue(obj, null)));
 				}
@@ -100,6 +105,10 @@ namespace jwelloneEditor
 
 			return data;
 		}
+		
+		static bool IsBackingField(in FieldInfo fieldInfo)
+		{
+			return fieldInfo.IsDefined(typeof(CompilerGeneratedAttribute), false);
+		}
 	}
 }
-#endif
