@@ -15,8 +15,7 @@ namespace jwelloneEditor
 		[MenuItem("jwellone/Window/Confirmation Inspector")]
 		static void Open()
 		{
-			var window = GetWindow<ConfirmationInspector>("Confirmation Inspector");
-			window.Show();
+			GetWindow<ConfirmationInspector>("Confirmation Inspector");
 		}
 
 		void OnEnable()
@@ -32,7 +31,7 @@ namespace jwelloneEditor
 
 		void OnGUI()
 		{
-			var target = (GameObject)Selection.activeObject;
+			var target = Selection.activeObject as GameObject;
 			if (target == null)
 			{
 				return;
@@ -73,6 +72,11 @@ namespace jwelloneEditor
 			_scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition,GUI.skin.window);
 			_gui.Show(list[_selectIndex]);
 			EditorGUILayout.EndScrollView();
+		}
+
+		void OnInspectorUpdate()
+		{
+			Repaint();
 		}
 
 		void Reset()
