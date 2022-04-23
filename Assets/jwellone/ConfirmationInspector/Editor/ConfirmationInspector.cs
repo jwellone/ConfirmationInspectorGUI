@@ -8,8 +8,8 @@ namespace jwelloneEditor
 {
 	public class ConfirmationInspector : EditorWindow
 	{
-		int _selectIndex;
-		Vector2 _scrollPosition;
+		[SerializeField] int _selectIndex;
+		[SerializeField] Vector2 _scrollPosition;
 		ConfirmationInspectorGUI? _gui;
 
 		[MenuItem("jwellone/Window/Confirmation Inspector")]
@@ -26,7 +26,7 @@ namespace jwelloneEditor
 		private void OnDisable()
 		{
 			Selection.selectionChanged -= OnSelectionChanged;
-			Reset();
+			_gui = null;
 		}
 
 		void OnGUI()

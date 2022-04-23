@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using UnityEditor;
+using UnityEngine;
 
 #nullable enable
 
@@ -36,6 +38,7 @@ namespace jwelloneEditor
 		public ConfirmationInspectorGUI()
 		{
 			Add(BaseValueGUI.instance);
+			Add(new ActionFuncDelegateGUI());
 			Add(new UnityObjectGUI());
 			Add(new ArrayGUI());
 			Add(new ListGUI());
@@ -55,6 +58,12 @@ namespace jwelloneEditor
 		{
 			if (obj == null)
 			{
+				return;
+			}
+
+			if(EditorGUI.indentLevel>=5)
+			{
+				Debug.LogWarning("The display is interrupted because the nesting is too deep.");
 				return;
 			}
 

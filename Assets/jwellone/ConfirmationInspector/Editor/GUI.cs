@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
+using System.Runtime.Serialization;
 using UnityEditor;
 using UnityEngine;
 
@@ -73,6 +75,8 @@ namespace jwelloneEditor
 			_dicGUI.Add(typeof(Vector4), new Vector4GUI());
 			_dicGUI.Add(typeof(Color), new ColorGUI());
 			_dicGUI.Add(typeof(Color32), new Color32GUI());
+			_dicGUI.Add(typeof(Rect), new RectGUI());
+			_dicGUI.Add(typeof(RectInt), new RectIntGUI());
 			_dicGUI.Add(typeof(Quaternion), new QuaternionGUI());
 			_dicGUI.Add(typeof(Matrix4x4), new Matrix4x4GUI());
 		}
@@ -90,6 +94,51 @@ namespace jwelloneEditor
 			}
 
 			return false;
+		}
+	}
+
+	public sealed class ActionFuncDelegateGUI : GUI
+	{
+		public int order => 0;
+
+		public bool Show(in ConfirmationInspectorGUI owner, in GUIData data)
+		{
+			if (!(data.type.IsDelegate() || data.type.IsAction() || data.type.IsFunc()))
+			{
+				return false;
+			}
+
+			EditorGUILayout.LabelField(data.name);
+
+			EditorGUI.indentLevel += 1;
+
+			object? target = null;
+			MethodInfo? methodInfo = null;
+
+			if (data.value != null)
+			{
+				var propertyTarget = data.type.GetProperty("Target");
+				target = propertyTarget.GetValue(data.value);
+
+				var propertyMethod = data.type.GetProperty("Method");
+				methodInfo = propertyMethod.GetValue(data.value) as MethodInfo;
+			}
+
+			if (target is UnityEngine.Object value)
+			{
+				EditorGUILayout.ObjectField("Target", value, data.type, false);
+			}
+			else
+			{
+				EditorGUILayout.TextField("Target", target?.ToString());
+			}
+
+			EditorGUILayout.TextField("Method", methodInfo?.Name);
+
+			EditorGUI.indentLevel -= 1;
+
+
+			return true;
 		}
 	}
 
@@ -221,6 +270,40 @@ namespace jwelloneEditor
 		}
 	}
 
+	public sealed class RectGUI : GUI
+	{
+
+		public int order => 0;
+		public bool Show(in ConfirmationInspectorGUI owrner, in GUIData data)
+		{
+			if (data.type != typeof(Rect))
+			{
+				return false;
+			}
+
+			EditorGUILayout.RectField(data.name, (Rect)(data.value ?? Rect.zero));
+
+			return true;
+		}
+	}
+
+	public sealed class RectIntGUI : GUI
+	{
+
+		public int order => 0;
+		public bool Show(in ConfirmationInspectorGUI owrner, in GUIData data)
+		{
+			if (data.type != typeof(RectInt))
+			{
+				return false;
+			}
+
+			EditorGUILayout.RectIntField(data.name, (RectInt)(data.value ?? Rect.zero));
+
+			return true;
+		}
+	}
+
 	public sealed class QuaternionGUI : GUI
 	{
 		public int order => 0;
@@ -332,11 +415,16 @@ namespace jwelloneEditor
 			var count = data.value == null ? 0 : (int)data.type.GetProperty("Length")!.GetValue(data.value, null);
 			for (var i = 0; i < count; ++i)
 			{
-				var value = ((Array)data.value!).GetValue(i);
+				object? value = ((Array)data.value!).GetValue(i);
+
+				if(value==null)
+				{
+					continue;
+				}
 
 				if (!BaseValueGUI.instance.Show(owner, new GUIData(value.GetType(), $"Element{i}", value)))
 				{
-					if (_foldout.Show($"Element{i}", $"{key}_{value.GetType()}_Element{i}"))
+					if (_foldout.Show($"Element{i}", $"{key}_{value?.GetType()}_Element{i}"))
 					{
 						EditorGUI.indentLevel += 1;
 
@@ -454,6 +542,28 @@ namespace jwelloneEditor
 		public static bool IsClassOrStruct(this Type self)
 		{
 			return self.IsClass || (self.IsValueType && !self.IsPrimitive && !self.IsEnum);
+		}
+
+		public static bool IsAction(this Type self)
+		{
+			return self == typeof(Action) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Action<>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Action<,>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Action<,,>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Action<,,,>);
+		}
+
+		public static bool IsFunc(this Type self)
+		{
+			return self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Func<>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Func<,>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Func<,,>) ||
+				self.IsGenericType && self.GetGenericTypeDefinition() == typeof(Func<,,,>);
+		}
+
+		public static bool IsDelegate(this Type self)
+		{
+			return self.IsSubclassOf(typeof(Delegate)) || self.Equals(typeof(Delegate));
 		}
 
 		public static bool IsList(this Type self)
