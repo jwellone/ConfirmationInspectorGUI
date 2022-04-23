@@ -14,8 +14,11 @@ This feature is one of the "j1Tech" developed by jwellone Inc for Unity.
 
 ## Getting Started
 - Import the package.
-- Open SampleScene.unity.
-- After execution, select an object in the scene and check the inspector to see that it is displayed in the Confirmation Inspector Behavior item.
+- In the Unity menu jwellone > Window > ConfirmationInspector Choose.
+- Select an object in the hierarchy to see the information in the Window.
+
+![ConfirmationInspector](https://user-images.githubusercontent.com/85072161/164888634-8803cb0f-9222-41bd-96e0-0117da833cda.gif)
+
 
 ## Authors
 Developer:[Yasuhiko Usui.](https://github.com/UsuiYasuhiko-jw1)
